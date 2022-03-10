@@ -74,13 +74,19 @@ public class UserController {
     // Create New Ticket
     @PostMapping("/ticket/add/")
     public ResponseEntity<?> createTicket(@RequestParam("userid") final long userid, @RequestBody Ticket ticket) {
-        if (!userServiceImpl.getUserById(userid).isPresent())
+         if (!userServiceImpl.getUserById(userid).isPresent())
             return new ResponseEntity<>(new ResponseModel("User " + userid + " Not Exists"), HttpStatus.NOT_FOUND);
         
-		if (!subCategoryRepo.findById((long) ticket.getSub_category_id()).isPresent() || !(subCategoryRepo
-				.findById((long) ticket.getSub_category_id()).get().getSub_category_id() == ticket.getCategory_id()))
+		if (!subCategoryRepo.findById((long) ticket.getSub_category_id()).isPresent() || !categoryRepo.findById((long) ticket.getCategory_id()).isPresent() )
 			 return new ResponseEntity<>(new ResponseModel("Invalid Category Id or Sub Category Id"), HttpStatus.NOT_FOUND);
-        	
+
+			long count = categoryRepo.findById((long) ticket.getCategory_id()).get().getSub_category_list().stream()
+					.filter(t -> t.getSub_category_id() == ticket.getSub_category_id()).count();
+
+			if (count == 0)
+					return new ResponseEntity<>(new ResponseModel("Invalid Category Id or Sub Category Id"),
+							HttpStatus.NOT_FOUND);
+
         ticket.setReported_id(userid);
 		ticket.setStatus_id(1);
         ticket.setCreate_datetime(getTimeNow());
@@ -94,10 +100,10 @@ public class UserController {
             return ticketServiceImpl.createTicket(ticket);
         }).orElseThrow(() -> new ResourceNotFoundException("Incorrect User Id = " + userid));
 
-        return new ResponseEntity<>(
-				new ResponseModel1(ticket.getTicket_id() + " Created Successfull",
-						url + "?ticketid=" + ticket.getTicket_id()),
-                HttpStatus.CREATED);
+		return new ResponseEntity<>(
+				new ResponseModel1("Ticket Created Successfully", url + "?ticketid=" + ticket.getTicket_id()),
+				HttpStatus.CREATED);
+      
     }
 
     // Get Ticket List for User
